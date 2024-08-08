@@ -1,50 +1,83 @@
-'use client';
-import { useEffect } from 'react';
+"use client";
+import { useEffect, useRef } from 'react';
+import { CanvasDrawer } from '../../public/static/wasm/pkg/front_wasm_bg';
 
 export default function Home() {
-  useEffect(() => {
-    const initWasm = async () => {
-      try {
-        const wasm = await import('../../public/static/wasm/pkg/front_wasm');
-        await wasm.setup('canvas', '/image.png');
-        wasm.draw_image(0, 0);
-        
-        let x = 0;
-        let y = 0;
-        
-        const move = (dx: number, dy: number) => {
-          x += dx;
-          y += dy;
-          wasm.draw_image(x, y);
-        };
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const directionRef = useRef({ x: 0, y: 0 });
+  let animationFrameId: number | null = null;
 
-        document.addEventListener('keydown', (e) => {
-          switch (e.key) {
+  const step = 500; // 1秒あたりの移動量
+
+  useEffect(() => {
+    // Wasmの初期化
+    import('../../public/static/wasm/pkg/front_wasm').then(() => {
+      if (canvasRef.current) {
+        // CanvasDrawerのインスタンス作成
+        const drawer = new CanvasDrawer('myCanvas', '/image.png');
+        
+        // 初期描画
+        drawer.draw_image();
+
+        let lastTime = performance.now();
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+          switch (event.key) {
             case 'ArrowUp':
-              move(0, -50);
+              directionRef.current = { x: 0, y: -1 };
               break;
             case 'ArrowDown':
-              move(0, 50);
+              directionRef.current = { x: 0, y: 1 };
               break;
             case 'ArrowLeft':
-              move(-50, 0);
+              directionRef.current = { x: -1, y: 0 };
               break;
             case 'ArrowRight':
-              move(50, 0);
+              directionRef.current = { x: 1, y: 0 };
+              break;
+            default:
               break;
           }
-        });
-      } catch (error) {
-        console.error('Error loading wasm:', error);
-      }
-    };
+        };
 
-    initWasm();
+        const handleKeyUp = (event: KeyboardEvent) => {
+          switch (event.key) {
+            case 'ArrowUp':
+            case 'ArrowDown':
+            case 'ArrowLeft':
+            case 'ArrowRight':
+              directionRef.current = { x: 0, y: 0 };
+              break;
+            default:
+              break;
+          }
+        };
+
+        const animate = () => {
+          const now = performance.now();
+          const deltaTime = (now - lastTime) / 1000; // 秒単位の経過時間
+          lastTime = now;
+
+          const { x, y } = directionRef.current;
+          if (x !== 0 || y !== 0) {
+            drawer.move_image(x * step * deltaTime, y * step * deltaTime);
+          }
+          animationFrameId = requestAnimationFrame(animate);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        animate(); // Start the animation loop
+
+        // クリーンアップ
+        return () => {
+          window.removeEventListener('keydown', handleKeyDown);
+          window.removeEventListener('keyup', handleKeyUp);
+          if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        };
+      }
+    }).catch(console.error);
   }, []);
 
-  return (
-    <div>
-      <canvas id="canvas" width="800" height="600"></canvas>
-    </div>
-  );
+  return <canvas id="myCanvas" ref={canvasRef} width="900" height="500"></canvas>;
 }
