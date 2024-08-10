@@ -7,21 +7,7 @@ export default function Home() {
   const directionRef = useRef({ x: 0, y: 0 });
   let animationFrameId: number | null = null;
 
-  const step = 500; // 1秒あたりの移動量
-
-  useEffect(() => {
-    // Wasmの初期化
-    import('../../public/static/wasm/pkg/front_wasm').then(() => {
-      if (canvasRef.current) {
-        // CanvasDrawerのインスタンス作成
-        const drawer = new CanvasDrawer('myCanvas', '/image.png');
-        
-        // 初期描画
-        drawer.draw_image();
-
-        let lastTime = performance.now();
-
-        const handleKeyDown = (event: KeyboardEvent) => {
+  const handleKeyDown = (event: KeyboardEvent) => {
           switch (event.key) {
             case 'ArrowUp':
               directionRef.current = { x: 0, y: -1 };
@@ -52,6 +38,21 @@ export default function Home() {
               break;
           }
         };
+
+  const step = 500; // 1秒あたりの移動量
+
+  useEffect(() => {
+    // Wasmの初期化
+    import('../../public/static/wasm/pkg/front_wasm').then(() => {
+      if (canvasRef.current) {
+        // CanvasDrawerのインスタンス作成
+        const drawer = new CanvasDrawer('myCanvas', '/image.png');
+        
+        // 初期描画
+        drawer.draw_image();
+
+        let lastTime = performance.now();
+
 
         const animate = () => {
           const now = performance.now();
